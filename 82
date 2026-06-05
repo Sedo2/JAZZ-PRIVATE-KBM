@@ -278,6 +278,107 @@ torso.MouseButton1Click:Connect(function()
     drop.Text = "Aim Part: Torso"
 end)
 
+--// CONTROLS DROPDOWN
+local controlsDrop = Instance.new("TextButton", settings)
+controlsDrop.Size = UDim2.new(1,0,0,40)
+controlsDrop.Position = UDim2.new(0,0,0,100)
+controlsDrop.Text = "Controls ▼"
+controlsDrop.BackgroundColor3 = PURPLE
+controlsDrop.TextColor3 = Color3.new(0,0,0)
+
+local controlsFrame = Instance.new("Frame", settings)
+controlsFrame.Size = UDim2.new(1,0,0,0)
+controlsFrame.Position = UDim2.new(0,0,0,145)
+controlsFrame.ClipsDescendants = true
+controlsFrame.BackgroundTransparency = 1
+
+-- OPEN / CLOSE
+local controlsOpen = false
+controlsDrop.MouseButton1Click:Connect(function()
+    controlsOpen = not controlsOpen
+    controlsFrame:TweenSize(
+        UDim2.new(1,0,0, controlsOpen and 110 or 0),
+        "Out","Quad",0.25,true
+    )
+end)
+
+-- FUNCTION
+local function getName(input)
+    if typeof(input) == "EnumItem" then
+        return input.Name
+    end
+    return "None"
+end
+
+-- AIM KEY (LEFT)
+local aimKeyBtn = Instance.new("TextButton", controlsFrame)
+aimKeyBtn.Size = UDim2.new(0.46,0,0,40)
+aimKeyBtn.Position = UDim2.new(0.02,0,0,5)
+aimKeyBtn.BackgroundColor3 = PURPLE
+aimKeyBtn.TextColor3 = Color3.new(0,0,0)
+aimKeyBtn.Text = "Aim Key: "..getName(Settings.AimKey)
+
+-- UI KEY (RIGHT)
+local uiKeyBtn = Instance.new("TextButton", controlsFrame)
+uiKeyBtn.Size = UDim2.new(0.46,0,0,40)
+uiKeyBtn.Position = UDim2.new(0.52,0,0,5)
+uiKeyBtn.BackgroundColor3 = PURPLE
+uiKeyBtn.TextColor3 = Color3.new(0,0,0)
+uiKeyBtn.Text = "UI Key: "..getName(Settings.ToggleKey)
+
+-- AIM MODE (BOTTOM)
+local modeBtn = Instance.new("TextButton", controlsFrame)
+modeBtn.Size = UDim2.new(0.96,0,0,40)
+modeBtn.Position = UDim2.new(0.02,0,0,55)
+modeBtn.BackgroundColor3 = PURPLE
+modeBtn.TextColor3 = Color3.new(0,0,0)
+modeBtn.Text = "Aim Mode: Hold"
+
+-- AIM KEY CHANGE
+aimKeyBtn.MouseButton1Click:Connect(function()
+    aimKeyBtn.Text = "Aim Key: ..."
+
+    local conn
+    conn = UIS.InputBegan:Connect(function(input,gp)
+        if gp then return end
+
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            Settings.AimKey = input.KeyCode
+        elseif input.UserInputType.Name:find("Mouse") then
+            Settings.AimKey = input.UserInputType
+        else return end
+
+        aimKeyBtn.Text = "Aim Key: "..getName(Settings.AimKey)
+        conn:Disconnect()
+    end)
+end)
+
+-- UI KEY CHANGE
+uiKeyBtn.MouseButton1Click:Connect(function()
+    uiKeyBtn.Text = "UI Key: ..."
+
+    local conn
+    conn = UIS.InputBegan:Connect(function(input,gp)
+        if gp then return end
+
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            Settings.ToggleKey = input.KeyCode
+        elseif input.UserInputType.Name:find("Mouse") then
+            Settings.ToggleKey = input.UserInputType
+        else return end
+
+        uiKeyBtn.Text = "UI Key: "..getName(Settings.ToggleKey)
+        conn:Disconnect()
+    end)
+end)
+
+-- AIM MODE SWITCH
+local aimToggle = false
+
+modeBtn.MouseButton1Click:Connect(function()
+    aimToggle = not aimToggle
+    modeBtn.Text = "Aim Mode: "..(aimToggle and "Toggle" or "Hold")
+end)
 
 --// MINIMIZE BUTTON
 local minimized = false
@@ -343,17 +444,27 @@ RS.RenderStepped:Connect(function()
     end
 end)
 
---// INPUT (AIM + UI TOGGLE)
+--// INPUT (FIXED AIM TOGGLE + HOLD)
+
 UIS.InputBegan:Connect(function(input,gp)
     if gp then return end
 
-    -- AIM (keyboard + mouse)
-    if input.KeyCode == Settings.AimKey 
-    or input.UserInputType == Settings.AimKey then
-        holding = true
+    local isAimInput =
+        input.KeyCode == Settings.AimKey or
+        input.UserInputType == Settings.AimKey
+
+    -- AIM LOGIC (FIXED)
+    if isAimInput then
+        if aimToggle then
+            -- TOGGLE MODE
+            holding = not holding
+        else
+            -- HOLD MODE
+            holding = true
+        end
     end
 
-    -- UI toggle (keyboard only)
+    -- UI TOGGLE
     if input.KeyCode == Settings.ToggleKey then
         uiVisible = not uiVisible
         gui.Enabled = uiVisible
@@ -361,9 +472,11 @@ UIS.InputBegan:Connect(function(input,gp)
 end)
 
 UIS.InputEnded:Connect(function(input)
-    if input.KeyCode == Settings.AimKey 
-    or input.UserInputType == Settings.AimKey then
-        holding = false
+    if not aimToggle then
+        if input.KeyCode == Settings.AimKey 
+        or input.UserInputType == Settings.AimKey then
+            holding = false
+        end
     end
 end)
 
@@ -405,7 +518,3 @@ local function keybind(parent,name,setting,y)
         end)
     end)
 end
-
--- ADD TO SETTINGS PAGE
-keybind(settings,"UI Key","ToggleKey",120)
-keybind(settings,"Aim Key","AimKey",170)
